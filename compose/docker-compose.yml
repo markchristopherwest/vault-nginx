@@ -1,0 +1,67 @@
+services:
+  vault:
+    container_name: "vault"
+    ports:
+      - "5696:5696"
+      - "8200:8200"
+      - "8201:8201"
+    image: "hashicorp/vault:latest"
+    cap_add:
+      - IPC_LOCK
+    environment:
+      - 'VAULT_ADDR=http://127.0.0.1:8200'
+      - 'VAULT_DEV_ROOT_TOKEN_ID=root'
+      - 'VAULT_SKIP_VERIFY=true'
+    volumes:
+      - type: bind
+        source: ./vault.hcl
+        target: /opt/vault/config/vault.hcl
+    entrypoint: [ "sh", "-c", "vault server -config /opt/vault/config/vault.hcl -log-level=trace"] 
+  agent:
+    container_name: "agent"
+    expose:
+      - "8200"
+    image: "hashicorp/vault:latest"
+    depends_on:
+      - setup
+    # restart: "no"
+    network_mode: "bridge"
+    entrypoint: [ "sh", "-c", "vault agent -config /sensitive/agent-config.hcl -log-level=trace"] 
+    volumes:
+      - type: bind
+        source: ./../sensitive
+        target: /sensitive
+      - type: bind
+        source: ./../terraform
+        target: /terraform
+      - type: bind
+        source: ./../html
+        target: /html
+  setup:
+    container_name: "setup"
+    expose:
+      - "8200"
+    image: "ubuntu:24.04"
+    depends_on:
+      - vault
+    network_mode: "bridge"
+    entrypoint: [ "sh", "-c", "/sensitive/helper-setup.sh"] 
+    volumes:
+      - type: bind
+        source: ./../terraform
+        target: /terraform
+      - type: bind
+        source: ./../sensitive
+        target: /sensitive
+  nginx:
+    image: nginx:stable-alpine
+    container_name: nginx
+    volumes:
+      - type: bind
+        source: ./../html/index.html
+        target: /usr/share/nginx/html/index.html
+    ports:
+    - "80:80"
+    depends_on:
+      - agent
+      - setup

@@ -1,0 +1,235 @@
+#!/bin/bash
+
+set -e
+
+function cleanup() {
+  pushd compose
+  docker-compose down --volumes
+  docker-compose rm -fs 
+  docker system prune -f
+  docker volume prune -f
+  popd
+  # Purge the TF State
+  rm -rf ./terraform/.terraform
+  rm -rf ./terraform/.terraform.lock.hcl
+  rm -rf ./terraform/terraform.tfstate
+  rm -rf ./terraform/terraform.tfstate.backup
+  exit 0
+}
+
+trap cleanup SIGKILL SIGINT
+
+function init_compose() {
+  pushd compose/
+  docker-compose up -d --build
+
+  popd
+}
+
+function init_terraform() {
+  pushd terraform
+  terraform init
+  terraform apply -auto-approve
+  popd
+}
+
+# Test with login to Boundary after provisioning
+function login() {
+  boundary authenticate password -login-name jeff -password foofoofoo -auth-method-id $(primary_org_ampw)
+}
+
+function primary_org_id() {
+  strip $(boundary scopes list -keyring-type=none -format json | jq  -c '.items[] | select(.name | contains("primary")) | .id')
+}
+
+function primary_org_ampw() {
+  strip $(boundary auth-methods list -keyring-type=none -scope-id $(primary_org_id) -format json | jq -c '.items[].id') 
+}
+
+function strip() {
+  echo "$1" | tr -d '"'
+}
+
+for arg in "$@"
+do
+    case $arg in
+        all)
+        init_compose
+
+        echo " "
+        echo 
+        echo "To verify your lamp service container logs:"
+        echo
+        echo "docker logs vault"
+        echo 
+        echo "To verify your vault service container logs:"
+        echo
+        echo "docker logs setup"
+        echo 
+        echo "To verify your vault setup container logs:"
+        echo
+        echo "docker logs agent"
+        echo 
+        echo "To verify your nginx setup container logs:"
+        echo
+        echo "docker logs nginx"
+
+
+        shift
+        ;;
+        login)
+        login
+        shift
+        ;;
+        cleanup)
+        cleanup
+        shift
+        ;;
+        *)
+        echo "cmd not found: try 'all', 'login', or 'cleanup'"
+        shift
+        ;;
+    esac
+done
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
